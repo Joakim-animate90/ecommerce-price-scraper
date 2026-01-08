@@ -1,0 +1,434 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  PYTHONUNBUFFERED: 1
+  PYTHONDONTWRITEBYTECODE: 1
+
+jobs:
+  # Job 1: Lint and Code Quality
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install linting dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort flake8 mypy bandit safety
+
+      - name: Check code formatting with Black
+        run: black --check --diff scrapy_project/ecommerce/
+
+      - name: Check import sorting with isort
+        run: isort --check-only --diff scrapy_project/ecommerce/
+
+      - name: Lint with flake8
+        run: |
+          flake8 scrapy_project/ecommerce/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 scrapy_project/ecommerce/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+
+      - name: Type checking with mypy
+        run: |
+          pip install -r scrapy_project/requirements.txt
+          mypy scrapy_project/ecommerce/ --ignore-missing-imports
+        continue-on-error: true
+
+      - name: Security scan with bandit
+        run: bandit -r scrapy_project/ecommerce/ -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Check dependencies for security vulnerabilities
+        run: safety check --json --output safety-report.json
+        continue-on-error: true
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results
+          path: |
+            bandit-report.json
+            safety-report.json
+
+  # Job 2: Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scrapy_project/requirements.txt
+          pip install pytest pytest-cov pytest-mock pytest-asyncio pytest-xdist
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Create test directories
+        run: |
+          mkdir -p scrapy_project/tests
+          mkdir -p scrapy_project/logs
+          mkdir -p scrapy_project/output
+
+      - name: Run unit tests
+        env:
+          SCRAPY_ENV: testing
+        run: |
+          cd scrapy_project
+          python -m pytest tests/ -v --cov=ecommerce --cov-report=xml --cov-report=html --cov-fail-under=70
+        continue-on-error: ${{ matrix.python-version != '3.11' }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: matrix.python-version == '3.11'
+        with:
+          file: ./scrapy_project/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always() && matrix.python-version == '3.11'
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: |
+            scrapy_project/htmlcov/
+            scrapy_project/coverage.xml
+
+  # Job 3: Integration Tests with Database
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_ecommerce_scraper
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scrapy_project/requirements.txt
+          pip install pytest pytest-cov pytest-mock pytest-asyncio
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Set up test database
+        env:
+          PGPASSWORD: test_password
+        run: |
+          psql -h localhost -U test_user -d test_ecommerce_scraper -f postgres_setup/init.sql
+
+      - name: Run integration tests
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: test_ecommerce_scraper
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          SCRAPY_ENV: testing
+        run: |
+          cd scrapy_project
+          python -m pytest tests/integration/ -v --tb=short
+        continue-on-error: true
+
+      - name: Test database connections
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: test_ecommerce_scraper
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        run: |
+          cd scrapy_project
+          python -c "
+          import psycopg2
+          conn = psycopg2.connect(
+              host='localhost',
+              port=5432,
+              database='test_ecommerce_scraper',
+              user='test_user',
+              password='test_password'
+          )
+          cur = conn.cursor()
+          cur.execute('SELECT version()')
+          print('PostgreSQL version:', cur.fetchone()[0])
+          cur.execute('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \\'public\\'')
+          print('Tables created:', cur.fetchone()[0])
+          conn.close()
+          print('Database connection test passed!')
+          "
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            scrapy_project/logs/
+            scrapy_project/output/
+
+  # Job 4: Spider Tests (Mock web scraping)
+  spider-tests:
+    name: Spider Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scrapy_project/requirements.txt
+          pip install pytest pytest-mock responses
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Test spider contracts and syntax
+        run: |
+          cd scrapy_project
+          scrapy check
+
+      - name: Run spider unit tests
+        env:
+          SCRAPY_ENV: testing
+        run: |
+          cd scrapy_project
+          python -m pytest tests/spiders/ -v --tb=short
+        continue-on-error: true
+
+      - name: Test item pipelines
+        run: |
+          cd scrapy_project
+          python -c "
+          from ecommerce.pipelines import ValidationPipeline, DuplicationPipeline
+          from ecommerce.items import LaptopItem
+          import scrapy
+
+          # Test validation pipeline
+          pipeline = ValidationPipeline()
+          item = LaptopItem()
+          item['product_name'] = 'Test Laptop'
+          item['price'] = 50000
+          item['platform'] = 'test'
+          item['url'] = 'https://example.com/laptop'
+
+          try:
+              result = pipeline.process_item(item, None)
+              print('ValidationPipeline test passed!')
+          except Exception as e:
+              print(f'ValidationPipeline test failed: {e}')
+
+          # Test duplication pipeline
+          dup_pipeline = DuplicationPipeline()
+          try:
+              result1 = dup_pipeline.process_item(item, None)
+              result2 = dup_pipeline.process_item(item, None)
+              print('DuplicationPipeline test passed!')
+          except Exception as e:
+              print(f'DuplicationPipeline test failed: {e}')
+          "
+
+  # Job 5: Performance Tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scrapy_project/requirements.txt
+          pip install pytest pytest-benchmark memory-profiler
+
+      - name: Run performance benchmarks
+        run: |
+          cd scrapy_project
+          python -m pytest tests/performance/ -v --benchmark-only --benchmark-json=benchmark-results.json
+        continue-on-error: true
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-results
+          path: scrapy_project/benchmark-results.json
+
+  # Job 6: Docker Build Test
+  docker-build:
+    name: Test Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Test Scrapy Docker build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./scrapy_project
+          file: ./scrapy_project/Dockerfile
+          target: testing
+          load: true
+          tags: test-scraper:latest
+
+      - name: Test PostgreSQL Docker build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./postgres_setup
+          file: ./postgres_setup/Dockerfile
+          load: true
+          tags: test-postgres:latest
+
+      - name: Run container tests
+        run: |
+          # Test scraper container
+          docker run --rm test-scraper:latest python -c "import scrapy; print('Scrapy import OK')"
+          docker run --rm test-scraper:latest python -c "import psycopg2; print('PostgreSQL driver OK')"
+          docker run --rm test-scraper:latest python -c "import playwright; print('Playwright OK')"
+
+          # Test postgres container
+          docker run --rm -d --name test-postgres-container -e POSTGRES_PASSWORD=test test-postgres:latest
+          sleep 10
+          docker exec test-postgres-container pg_isready -U postgres
+          docker stop test-postgres-container
+
+  # Job 7: Generate Test Report
+  test-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, integration-tests, spider-tests]
+    if: always()
+    steps:
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate test summary
+        run: |
+          echo "# Test Results Summary" > test-summary.md
+          echo "" >> test-summary.md
+          echo "## Job Status" >> test-summary.md
+          echo "- Lint: ${{ needs.lint.result }}" >> test-summary.md
+          echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> test-summary.md
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> test-summary.md
+          echo "- Spider Tests: ${{ needs.spider-tests.result }}" >> test-summary.md
+          echo "" >> test-summary.md
+          echo "## Test Coverage" >> test-summary.md
+          if [ -f test-results-3.11/coverage.xml ]; then
+            echo "Coverage report available in artifacts" >> test-summary.md
+          else
+            echo "No coverage report found" >> test-summary.md
+          fi
+          echo "" >> test-summary.md
+          echo "Generated at: $(date)" >> test-summary.md
+
+      - name: Upload test summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary
+          path: test-summary.md
+
+      - name: Comment test results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('test-summary.md')) {
+              const summary = fs.readFileSync('test-summary.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            }

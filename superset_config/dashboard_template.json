@@ -1,0 +1,181 @@
+{
+  "dashboard_title": "E-commerce Laptop Price Comparison",
+  "description": "Compare laptop prices across Kenyan e-commerce platforms",
+  "css": "",
+  "slug": "ecommerce-laptop-prices",
+  "charts": [
+    {
+      "slice_name": "Price Comparison by Platform",
+      "viz_type": "dist_bar",
+      "description": "Average laptop prices by platform",
+      "params": {
+        "datasource": "laptops",
+        "groupby": ["platform"],
+        "metrics": [
+          {
+            "expressionType": "SIMPLE",
+            "column": {
+              "column_name": "price"
+            },
+            "aggregate": "AVG",
+            "label": "Average Price"
+          }
+        ],
+        "order_desc": true,
+        "color_scheme": "supersetColors"
+      }
+    },
+    {
+      "slice_name": "Product Count by Platform",
+      "viz_type": "pie",
+      "description": "Distribution of products across platforms",
+      "params": {
+        "datasource": "laptops",
+        "groupby": ["platform"],
+        "metrics": [
+          {
+            "expressionType": "SIMPLE",
+            "column": {
+              "column_name": "id"
+            },
+            "aggregate": "COUNT",
+            "label": "Product Count"
+          }
+        ]
+      }
+    },
+    {
+      "slice_name": "Price Range Distribution",
+      "viz_type": "histogram",
+      "description": "Distribution of laptop prices",
+      "params": {
+        "datasource": "laptops",
+        "all_columns_x": ["price"],
+        "row_limit": 10000
+      }
+    },
+    {
+      "slice_name": "Latest Laptop Listings",
+      "viz_type": "table",
+      "description": "Recent laptop listings with details",
+      "params": {
+        "datasource": "laptops",
+        "all_columns": [
+          "platform",
+          "brand",
+          "product_name",
+          "price",
+          "processor",
+          "ram",
+          "storage",
+          "updated_at"
+        ],
+        "row_limit": 100,
+        "order_desc": true,
+        "order_by_cols": [["updated_at", false]]
+      }
+    },
+    {
+      "slice_name": "Price Trends Over Time",
+      "viz_type": "line",
+      "description": "Price changes over time by platform",
+      "params": {
+        "datasource": "price_history",
+        "x_axis": "recorded_at",
+        "metrics": [
+          {
+            "expressionType": "SIMPLE",
+            "column": {
+              "column_name": "price"
+            },
+            "aggregate": "AVG",
+            "label": "Average Price"
+          }
+        ],
+        "groupby": ["platform"]
+      }
+    },
+    {
+      "slice_name": "Brand Distribution",
+      "viz_type": "pie",
+      "description": "Laptop count by brand",
+      "params": {
+        "datasource": "laptops",
+        "groupby": ["brand"],
+        "metrics": [
+          {
+            "expressionType": "SIMPLE",
+            "column": {
+              "column_name": "id"
+            },
+            "aggregate": "COUNT",
+            "label": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "slice_name": "Top Deals",
+      "viz_type": "table",
+      "description": "Products with highest discounts",
+      "params": {
+        "datasource": "top_deals",
+        "all_columns": [
+          "platform",
+          "product_name",
+          "brand",
+          "original_price",
+          "current_price",
+          "discount_percentage"
+        ],
+        "row_limit": 20,
+        "order_desc": true,
+        "order_by_cols": [["discount_percentage", false]]
+      }
+    }
+  ],
+  "positions": {
+    "DASHBOARD_VERSION_KEY": "v2",
+    "GRID_ID": {
+      "type": "GRID",
+      "id": "GRID_ID",
+      "children": [
+        "ROW-1",
+        "ROW-2",
+        "ROW-3"
+      ]
+    },
+    "ROW-1": {
+      "type": "ROW",
+      "id": "ROW-1",
+      "children": [
+        "CHART-1",
+        "CHART-2"
+      ]
+    },
+    "ROW-2": {
+      "type": "ROW",
+      "id": "ROW-2",
+      "children": [
+        "CHART-3",
+        "CHART-6"
+      ]
+    },
+    "ROW-3": {
+      "type": "ROW",
+      "id": "ROW-3",
+      "children": [
+        "CHART-4",
+        "CHART-7"
+      ]
+    }
+  },
+  "metadata": {
+    "native_filter_configuration": [],
+    "timed_refresh_immune_slices": [],
+    "expanded_slices": {},
+    "refresh_frequency": 0,
+    "default_filters": "{}",
+    "color_scheme": "supersetColors"
+  }
+}
