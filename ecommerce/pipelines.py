@@ -9,10 +9,8 @@ Pipeline order:
 
 import logging
 import hashlib
-import json
 from datetime import datetime
-from decimal import Decimal
-from itemadapter import ItemAdapter, is_item
+from itemadapter import ItemAdapter
 from scrapy.exceptions import DropItem
 import psycopg2
 from psycopg2.extras import Json, RealDictCursor
@@ -138,7 +136,8 @@ class PostgreSQLPipeline:
             self.pool.closeall()
             self.logger.info(
                 f"Database pipeline stats - Saved: {self.items_saved}, "
-                f"Updated: {self.items_updated}, Failed: {self.items_failed}"
+                f"Updated: {self.items_updated}, "
+                f"Failed: {self.items_failed}"
             )
 
     def process_item(self, item, spider):
@@ -196,7 +195,7 @@ class PostgreSQLPipeline:
     def _check_existing_product(self, cursor, adapter):
         """Check if product already exists in database."""
         query = """
-            SELECT id FROM laptops 
+            SELECT id FROM laptops
             WHERE platform = %s AND url = %s
             LIMIT 1
         """

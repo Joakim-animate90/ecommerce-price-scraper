@@ -2,8 +2,6 @@
 Unit tests for items.py
 """
 
-import pytest
-from datetime import datetime
 from ecommerce.items import (
     LaptopItem,
     clean_text,

@@ -6,9 +6,9 @@ Defines the data structure for scraped laptop products with validation.
 
 import scrapy
 from itemadapter import ItemAdapter
-from scrapy.loader.processors import TakeFirst, MapCompose, Join
+from scrapy.loader.processors import TakeFirst, MapCompose
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import InvalidOperation
 
 
 def clean_text(value):
@@ -48,7 +48,8 @@ class LaptopItem(scrapy.Item):
     Laptop product item with comprehensive fields.
 
     Fields:
-        platform: E-commerce platform name (jumia, masoko, phoneplace, laptopclinic)
+        platform: E-commerce platform name
+                  (jumia, masoko, phoneplace, laptopclinic)
         product_name: Full product name/title
         brand: Laptop brand (Dell, HP, Lenovo, etc.)
         model: Specific model identifier
@@ -71,11 +72,13 @@ class LaptopItem(scrapy.Item):
 
     # Core fields
     platform = scrapy.Field(
-        input_processor=MapCompose(clean_text, str.lower), output_processor=TakeFirst()
+        input_processor=MapCompose(clean_text, str.lower),
+        output_processor=TakeFirst(),
     )
 
     product_name = scrapy.Field(
-        input_processor=MapCompose(clean_text), output_processor=TakeFirst()
+        input_processor=MapCompose(clean_text),
+        output_processor=TakeFirst(),
     )
 
     brand = scrapy.Field(
@@ -175,7 +178,8 @@ def validate_laptop_item(item):
             price_float = float(price)
             if price_float < 15000 or price_float > 500000:
                 errors.append(
-                    f"Price {price_float} KES out of reasonable range (15000-500000)"
+                    f"Price {price_float} KES out of reasonable range "
+                    f"(15000-500000)"
                 )
         except (ValueError, TypeError):
             errors.append(f"Invalid price format: {price}")

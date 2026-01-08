@@ -4,10 +4,7 @@ PhonePlace Kenya laptop spider.
 Scrapes laptop listings from PhonePlace Kenya
 """
 
-import scrapy
-from scrapy.loader import ItemLoader
 from .base_spider import BaseEcommerceSpider
-from ..items import LaptopItem
 
 
 class PhonePlaceSpider(BaseEcommerceSpider):

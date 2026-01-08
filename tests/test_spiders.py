@@ -28,7 +28,7 @@ class TestBaseEcommerceSpider:
 
     def test_parse_specs_from_description(self):
         description = (
-            "Dell Inspiron with Intel Core i5, 8GB RAM, 256GB SSD, 15.6 inch display"
+            "Dell Inspiron with Intel Core i5, 8GB RAM, 256GB SSD, " "15.6 inch display"
         )
         specs = self.spider.parse_specs_from_description(description)
 
@@ -78,7 +78,8 @@ class TestJumiaSpider:
     def test_parse_extracts_links(self, response):
         results = list(self.spider.parse(response))
         # Should follow product links
-        assert len(results) >= 0  # May be 0 if selectors don't match mock HTML
+        # May be 0 if selectors don't match mock HTML
+        assert len(results) >= 0
 
 
 class TestAllSpiders:
@@ -88,9 +89,16 @@ class TestAllSpiders:
         from ecommerce.spiders.jumia_spider import JumiaSpider
         from ecommerce.spiders.masoko_spider import MasokoSpider
         from ecommerce.spiders.phoneplace_spider import PhonePlaceSpider
-        from ecommerce.spiders.laptopclinic_spider import LaptopClinicSpider
+        from ecommerce.spiders.laptopclinic_spider import (
+            LaptopClinicSpider,
+        )
 
-        spiders = [JumiaSpider, MasokoSpider, PhonePlaceSpider, LaptopClinicSpider]
+        spiders = [
+            JumiaSpider,
+            MasokoSpider,
+            PhonePlaceSpider,
+            LaptopClinicSpider,
+        ]
         expected_names = ["jumia", "masoko", "phoneplace", "laptopclinic"]
 
         for spider_class, expected_name in zip(spiders, expected_names):

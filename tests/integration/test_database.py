@@ -52,7 +52,7 @@ class TestDatabaseSchema:
         cursor.execute(
             """
             SELECT EXISTS (
-                SELECT FROM information_schema.tables 
+                SELECT FROM information_schema.tables
                 WHERE table_name = 'laptops'
             )
         """
@@ -66,7 +66,7 @@ class TestDatabaseSchema:
         cursor.execute(
             """
             SELECT EXISTS (
-                SELECT FROM information_schema.tables 
+                SELECT FROM information_schema.tables
                 WHERE table_name = 'price_history'
             )
         """
@@ -81,7 +81,8 @@ class TestDatabaseSchema:
         cursor.execute(
             """
             INSERT INTO laptops (
-                platform, product_name, brand, price, url, scraped_at, updated_at
+                platform, product_name, brand, price, url,
+                scraped_at, updated_at
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """,
@@ -109,7 +110,8 @@ class TestDatabaseSchema:
         cursor.execute(
             """
             INSERT INTO laptops (
-                platform, product_name, price, url, scraped_at, updated_at
+                platform, product_name, price, url,
+                scraped_at, updated_at
             ) VALUES (%s, %s, %s, %s, %s, %s)
         """,
             (
@@ -204,11 +206,23 @@ class TestDatabaseViews:
         # Insert test data
         cursor.execute(
             """
-            INSERT INTO laptops (platform, product_name, price, url, scraped_at, updated_at)
-            VALUES 
-                ('jumia', 'Laptop 1', 75000, 'https://jumia.co.ke/1', NOW(), NOW()),
-                ('jumia', 'Laptop 2', 80000, 'https://jumia.co.ke/2', NOW(), NOW()),
-                ('masoko', 'Laptop 3', 70000, 'https://masoko.com/3', NOW(), NOW())
+            INSERT INTO laptops (
+                platform, product_name, price, url,
+                scraped_at, updated_at
+            )
+            VALUES
+                (
+                    'jumia', 'Laptop 1', 75000,
+                    'https://jumia.co.ke/1', NOW(), NOW()
+                ),
+                (
+                    'jumia', 'Laptop 2', 80000,
+                    'https://jumia.co.ke/2', NOW(), NOW()
+                ),
+                (
+                    'masoko', 'Laptop 3', 70000,
+                    'https://masoko.com/3', NOW(), NOW()
+                )
         """
         )
         db_connection.commit()

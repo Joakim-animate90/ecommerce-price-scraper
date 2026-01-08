@@ -163,7 +163,8 @@ class BaseEcommerceSpider(scrapy.Spider):
                         specs["processor"] = f"Intel {proc_match.group(1).upper()}"
                 elif brand == "amd" or brand == "ryzen":
                     proc_match = re.search(
-                        r"(ryzen\s+\d+\s+\d+[a-z]*)", description_lower
+                        r"(ryzen\s+\d+\s+\d+[a-z]*)",
+                        description_lower,
                     )
                     if proc_match:
                         specs["processor"] = proc_match.group(1).title()

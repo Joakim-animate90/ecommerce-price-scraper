@@ -6,9 +6,7 @@ Note: Masoko may require JavaScript rendering - uses Playwright
 """
 
 import scrapy
-from scrapy.loader import ItemLoader
 from .base_spider import BaseEcommerceSpider
-from ..items import LaptopItem
 
 
 class MasokoSpider(BaseEcommerceSpider):
@@ -37,7 +35,11 @@ class MasokoSpider(BaseEcommerceSpider):
                     "playwright": True,
                     "playwright_include_page": True,
                     "playwright_page_methods": [
-                        ("wait_for_selector", "div.product-item", {"timeout": 10000}),
+                        (
+                            "wait_for_selector",
+                            "div.product-item",
+                            {"timeout": 10000},
+                        ),
                     ],
                 },
                 errback=self.errback_close_page,

@@ -10,7 +10,6 @@ Includes:
 import random
 import logging
 from scrapy import signals
-from itemadapter import ItemAdapter
 
 
 class UserAgentRotationMiddleware:
@@ -108,7 +107,7 @@ class EcommerceDownloaderMiddleware:
         # Handle specific status codes
         if response.status in [403, 429]:
             self.logger.warning(
-                f"Possible blocking detected: {response.status} from {request.url}"
+                f"Possible blocking detected: {response.status} from " f"{request.url}"
             )
 
         return response

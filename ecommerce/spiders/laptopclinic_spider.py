@@ -4,10 +4,7 @@ LaptopClinic Kenya spider.
 Scrapes laptop listings from LaptopClinic Kenya
 """
 
-import scrapy
-from scrapy.loader import ItemLoader
 from .base_spider import BaseEcommerceSpider
-from ..items import LaptopItem
 
 
 class LaptopClinicSpider(BaseEcommerceSpider):
